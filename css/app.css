@@ -678,3 +678,33 @@ footer nav {
     scroll-behavior: auto;
   }
 }
+
+#info-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+  color: #172333;
+  background: #fff;
+  border: 1px solid var(--blue);
+  box-shadow: 0 12px 40px #14253d40;
+}
+#info-dialog::backdrop {
+  background: #14253d66;
+}
+#info-title {
+  padding: 13px 18px;
+  color: #fff;
+  background: var(--blue);
+  border-bottom: 3px solid var(--orange);
+}
+#info-text {
+  padding: 24px 20px;
+  line-height: 1.6;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 20px 18px;
+}
+.dialog-actions button {
+  min-width: 80px;
+}

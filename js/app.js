@@ -320,6 +320,7 @@ function restore(direction) {
 $("undo").addEventListener("click", () => restore("undo"));
 $("redo").addEventListener("click", () => restore("redo"));
 document.addEventListener("keydown", (e) => {
+  if ($("info-dialog").open) return;
   if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if ((e.ctrlKey || e.metaKey) && ["z", "y"].includes(e.key.toLowerCase())) {
     e.preventDefault();
@@ -529,4 +530,9 @@ document.addEventListener(
     }
   }),
 );
+$("info-link").addEventListener("click", (event) => {
+  event.preventDefault();
+  $("info-dialog").showModal();
+});
+$("info-close").addEventListener("click", () => $("info-dialog").close());
 render();
