@@ -6,6 +6,25 @@ Ein statischer HTML/CSS/Vanilla-JavaScript-Editor für klassische Amiga-`.info`-
 Alle Pixel, PNGs und Binärdaten bleiben im Browser. Keine Uploads, Datenbank,
 Backend-API, CDN-Ressourcen oder Laufzeitabhängigkeit von Node.js.
 
+## Sprache / Language
+
+Die Oberfläche verwendet beim Laden automatisch die **bevorzugte Sprache des
+Browsers** (`navigator.languages`, ersatzweise `navigator.language`):
+
+- Deutsch bei `de` und regionalen Varianten wie `de-DE`, `de-AT` und `de-CH`.
+- Englisch bei `en` und allen anderen Browsersprachen als Rückfall.
+
+Maßgeblich ist die erste Sprache der Browser-Einstellung, die von der
+Betriebssystemsprache abweichen kann. Nach einer Änderung die Seite neu laden.
+Menüs, Werkzeuge, Status- und Fehlermeldungen, Importhinweise sowie zugängliche
+Beschriftungen werden übersetzt. Produktnamen und Amiga-Feldnamen wie WBTOOL
+oder ToolTypes bleiben erhalten. Dateinamen, DefaultTool, ToolTypes und
+exportierte Icon-Daten werden nicht übersetzt.
+
+The interface automatically uses German for a German browser language and
+English otherwise. Change your browser's preferred language and reload the page
+to switch languages. All processing and language selection remain local.
+
 ## Start
 
 Den Projektordner auf einen statischen HTTP-Webserver kopieren und `index.html`
@@ -237,7 +256,7 @@ npm test
 npm run samples
 ```
 
-Oder **[Browser-Testseite](tests/test-runner.html)** öffnen. 114 Tests prüfen
+Oder **[Browser-Testseite](tests/test-runner.html)** öffnen. 118 Tests prüfen
 Big Endian, signed/unsigned Grenzen, bitweise Referenzwerte, alle sechs Muster,
 PNG-Alpha/Farbzuordnung, History und Bildoperationen. Für die Größen
 16×16/1, 32×32/2, 48×32/2, 47×31/2, 17×16/2, 33×16/2 und 48×32/3 werden
@@ -268,6 +287,19 @@ node scripts/verify-reference.mjs /path/to/Amiga-Icon-Editor
 
 Dieser vergleicht alle Sample-Pixel und zentrale Metadaten mit dem
 Referenzparser und liest zusätzlich eine durch dessen Writer erzeugte Datei.
+
+Sprachtests prüfen beide Oberflächen einschließlich Status-/Fehlermeldungen,
+Importhinweisen und unveränderten Icon-Metadaten in Chromium und Firefox mit
+`de-DE`, `de-CH`, `en-US`, `en-GB` und `fr-FR` (englischer Rückfall):
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/i18n-browser.test.mjs
+```
+
+Übersetzungen liegen zentral in `js/translations.js`; die Sprachwahl,
+Platzhalter und Übersetzung der Fehlerobjekte in `js/i18n.js`.
+Die Git-Tags `v1.0.0` und `stable` bezeichnen weiterhin den zuvor markierten
+Stand; die Spracherweiterung ist im aktuellen Entwicklungsstand enthalten.
 
 Erweiterte Offline-Browsertests mit synthetischen modernen Icons:
 

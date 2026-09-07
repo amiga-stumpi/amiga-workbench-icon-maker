@@ -34,6 +34,7 @@ for (const [name, type] of [
   const browser = await type.launch({ headless: true });
   try {
     const context = await browser.newContext({
+      locale: "de-DE",
       viewport: { width: 1440, height: 1000 },
       acceptDownloads: true,
     });
@@ -48,13 +49,11 @@ for (const [name, type] of [
     await page.locator("#palette button").first().waitFor();
     await context.setOffline(true);
     for (const [file, bytes, format, expected] of fixtures) {
-      await page
-        .locator("#info-input")
-        .setInputFiles({
-          name: file,
-          mimeType: "application/octet-stream",
-          buffer: Buffer.from(bytes),
-        });
+      await page.locator("#info-input").setInputFiles({
+        name: file,
+        mimeType: "application/octet-stream",
+        buffer: Buffer.from(bytes),
+      });
       await page
         .locator("#status")
         .filter({ hasText: `${file} geladen` })
@@ -89,13 +88,11 @@ for (const [name, type] of [
       for (const dir of await readdir(root))
         for (const file of await readdir(root + "/" + dir)) {
           if (!file.endsWith(".info")) continue;
-          await page
-            .locator("#info-input")
-            .setInputFiles({
-              name: file,
-              mimeType: "application/octet-stream",
-              buffer: await readFile(root + "/" + dir + "/" + file),
-            });
+          await page.locator("#info-input").setInputFiles({
+            name: file,
+            mimeType: "application/octet-stream",
+            buffer: await readFile(root + "/" + dir + "/" + file),
+          });
           await page
             .locator("#status")
             .filter({ hasText: `${file} geladen` })

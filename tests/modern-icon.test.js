@@ -86,7 +86,7 @@ test("Planare OS2-Revision mit DrawerData2", async () => {
   equal(icon.sourceFormat, "OS2+/OS3 / MagicWB");
   equal(icon.drawerData.length, 56);
   equal(icon.userData, 0);
-  assert(icon.importNotice.includes("Drawer"));
+  assert(icon.importNotice.includes("OS2+"));
   AmigaIcon.parse(AmigaIcon.write(icon));
 });
 test("Klassischer Import bleibt unverändert", async () => {

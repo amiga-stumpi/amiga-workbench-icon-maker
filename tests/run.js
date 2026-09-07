@@ -1,3 +1,4 @@
+import "./i18n.test.js";
 import "./modern-icon.test.js";
 import "./editor.test.js";
 import "./bitplanes.test.js";

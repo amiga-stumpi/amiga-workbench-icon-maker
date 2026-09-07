@@ -14,6 +14,7 @@ for (const [browserName, type] of [
   const browser = await type.launch({ headless: true });
   try {
     const context = await browser.newContext({
+      locale: "de-DE",
       viewport: { width: 1440, height: 1100 },
       acceptDownloads: true,
     });
@@ -157,7 +158,7 @@ for (const [browserName, type] of [
       mimeType: "application/octet-stream",
       buffer: Buffer.from([0, 0, 0, 0]),
     });
-    await page.locator("#status").filter({ hasText: "Magic" }).waitFor();
+    await page.locator("#status").filter({ hasText: "E310" }).waitFor();
     assert.equal(await page.locator("#name").inputValue(), "Wetter");
     await page.locator("#type").selectOption("2");
     await page.click("#save-info");
