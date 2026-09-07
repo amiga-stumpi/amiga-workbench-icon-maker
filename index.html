@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Klassische Amiga Workbench 1.x Icons zeichnen, PNG konvertieren und echte .info-Dateien lokal im Browser bearbeiten.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>Amiga Workbench 1.x Icon Maker</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="app-header"><div class="brand"><span class="brand-icon" aria-hidden="true">▤</span><div><h1>Amiga Workbench <span>1.x Icon Maker</span></h1><p>Pixel für Pixel. Ein echtes Classic Icon.</p></div></div><span class="version">OLDICON / V1.0</span></header>
+  <main>
+    <section class="topbar" aria-label="Dateiaktionen">
+      <div><button id="preset" class="preset">Workbench 1.3 Tool Icon</button><span class="preset-caption">48 × 32 · 4 Pens · WBTOOL</span></div>
+      <div class="button-row"><button id="open-info">.info öffnen</button><button id="save-info" class="primary">↓ .info speichern</button></div>
+    </section>
+    <div id="status" class="status" role="status" aria-live="polite">Bereit. Zeichne dein Icon oder lade ein PNG in einen der beiden Zustände.</div>
+    <section class="workspace" aria-label="Icon-Editor">
+      <div class="edit-area">
+        <div class="toolbar">
+          <div class="button-row" role="group" aria-label="Werkzeuge"><button data-tool="pencil" aria-pressed="true">✎ Stift</button><button data-tool="eraser" aria-pressed="false">Radierer</button><button data-tool="picker" aria-pressed="false">Pipette</button><button data-tool="fill" aria-pressed="false">Füllen</button></div>
+          <div class="button-row"><button id="undo" title="Strg+Z">↶ Undo</button><button id="redo" title="Strg+Umschalt+Z">↷ Redo</button></div>
+          <div class="view-controls"><label>Zoom <select id="zoom"><option value="4">4×</option><option value="6">6×</option><option value="8" selected>8×</option><option value="10">10×</option><option value="12">12×</option><option value="16">16×</option></select></label><label class="check"><input id="grid" type="checkbox" checked> Raster</label></div>
+        </div>
+        <div class="editors">
+          <section class="editor-panel active" id="normal-panel" aria-labelledby="normal-title">
+            <div class="panel-title"><h2 id="normal-title">01 <strong>NORMAL</strong></h2><span class="image-size">48 × 32</span></div>
+            <div class="canvas-scroll"><canvas id="normal-canvas" tabindex="0" aria-label="Normal Pixel-Editor. Pfeiltasten bewegen, Leertaste zeichnet."></canvas></div>
+            <div class="editor-footer"><span>PNG hier ablegen</span><canvas id="normal-preview" aria-label="Normal in Originalgröße"></canvas></div>
+            <div class="panel-actions"><button data-import="normal">PNG laden</button><button data-png="normal">PNG speichern</button><button data-clear="normal">Clear</button></div>
+          </section>
+          <section class="editor-panel" id="selected-panel" aria-labelledby="selected-title">
+            <div class="panel-title"><h2 id="selected-title">02 <strong>SELECTED</strong></h2><span class="image-size">48 × 32</span></div>
+            <div class="canvas-scroll"><canvas id="selected-canvas" tabindex="0" aria-label="Selected Pixel-Editor. Pfeiltasten bewegen, Leertaste zeichnet."></canvas></div>
+            <div class="editor-footer"><span>PNG hier ablegen</span><canvas id="selected-preview" aria-label="Selected in Originalgröße"></canvas></div>
+            <div class="panel-actions"><button data-import="selected">PNG laden</button><button data-png="selected">PNG speichern</button><button data-clear="selected">Clear</button></div>
+          </section>
+        </div>
+        <section class="palette-section" aria-label="Darstellungspalette"><div class="section-heading"><h2>WORKBENCH PENS</h2><button id="reset-palette" class="text-button">WB 1.3 zurücksetzen</button></div><div id="palette" class="palette"></div><p>Nur Pen-Indizes werden im Icon gespeichert. Die Farben bestimmen Vorschau und PNG-Konvertierung.</p></section>
+        <div class="operations">
+          <div class="button-row"><button id="copy-to-selected">Normal → Selected</button><button id="copy-to-normal">Selected → Normal</button></div>
+          <div class="generate-row"><label for="selected-mode">Selected erzeugen</label><select id="selected-mode"><option value="swap12">Pen 1 ↔ Pen 2</option><option value="swap13">Pen 1 ↔ Pen 3</option><option value="invert">Pens invertieren</option><option value="copy">Normal kopieren</option></select><button id="generate">Erzeugen</button></div>
+        </div>
+        <details class="extras"><summary>Weitere Bildwerkzeuge</summary><p>Wirkt auf <strong id="active-label">Normal</strong>. Klicke in einen Editor, um den Zustand zu wechseln.</p><div class="button-row"><button data-transform="mirrorH">Horizontal spiegeln</button><button data-transform="mirrorV">Vertikal spiegeln</button><button data-transform="left" aria-label="Nach links schieben">←</button><button data-transform="right" aria-label="Nach rechts schieben">→</button><button data-transform="up" aria-label="Nach oben schieben">↑</button><button data-transform="down" aria-label="Nach unten schieben">↓</button></div><div class="button-row"><label>Pen A <select id="swap-a"></select></label><label>Pen B <select id="swap-b"></select></label><button id="swap-pens">Pens tauschen</button></div></details>
+      </div>
+      <aside class="settings" aria-label="Icon-Einstellungen">
+        <div class="section-heading"><h2>ICON-EINSTELLUNGEN</h2><span class="tiny-square" aria-hidden="true"></span></div>
+        <label for="name">Dateiname</label><div class="name-input"><input id="name" value="MyProgram" autocomplete="off" spellcheck="false"><span>.info</span></div>
+        <label for="type">Icon Type</label><select id="type"></select>
+        <div class="dimensions"><label>Breite<input id="width" type="number" min="1" max="256" value="48"></label><span>×</span><label>Höhe<input id="height" type="number" min="1" max="256" value="32"></label></div>
+        <label for="depth">Farbtiefe</label><select id="depth"><option value="1">1 Bitplane / 2 Pens</option><option value="2" selected>2 Bitplanes / 4 Pens</option><option value="3">3 Bitplanes / 8 Pens</option></select>
+        <button id="apply-size" class="full-width">Größe / Tiefe anwenden</button><p class="hint">Größenänderungen schneiden rechts/unten ab oder füllen mit Pen 0. Mit Undo rückgängig machen.</p>
+        <label for="stack-size">StackSize <span class="muted">Bytes</span></label><input id="stack-size" type="number" min="1" max="2147483647" value="16384">
+        <label class="check"><input id="automatic" type="checkbox" checked> Automatische Workbench-Position</label>
+        <div class="coordinates"><label>CurrentX<input id="current-x" type="number" value="0" min="-2147483647" max="2147483647" disabled></label><label>CurrentY<input id="current-y" type="number" value="0" min="-2147483647" max="2147483647" disabled></label></div>
+        <label class="check"><input id="selected-enabled" type="checkbox" checked> Selected Image exportieren</label>
+        <hr>
+        <h2>PNG-IMPORT</h2><label for="import-mode">Bildanpassung</label><select id="import-mode"><option value="fit">Einpassen · ganzes Bild</option><option value="crop">Zuschneiden · Fläche füllen</option><option value="original">Originalgröße · links oben</option></select>
+        <label for="alpha">Alpha-Schwellenwert</label><input id="alpha" type="number" min="0" max="255" value="128"><p class="hint">Alpha unter diesem Wert wird Pen 0. Die Icon-Größe bleibt beim Import erhalten.</p>
+        <details><summary>DefaultTool &amp; ToolTypes</summary><label for="default-tool">DefaultTool</label><input id="default-tool" placeholder="SYS:Tools/MyTool" spellcheck="false"><label for="tool-types">ToolTypes · eine Zeile je Eintrag</label><textarea id="tool-types" rows="4" placeholder="PORT=1234&#10;DEBUG=YES" spellcheck="false"></textarea></details>
+        <details><summary>Binäre Metadaten</summary><pre id="metadata"></pre></details>
+        <div class="format-note"><strong>Für Workbench 1.3</strong><p>Das 4-Pen-Preset schreibt OldIcons mit userData = 0. 8 Pens benötigen einen entsprechend konfigurierten Bildschirm.</p></div>
+      </aside>
+    </section>
+    <footer><p><span class="local-dot" aria-hidden="true"></span>Alle Bilder und Icons werden ausschließlich lokal in deinem Browser verarbeitet.<br>Es werden keine Dateien auf den Server hochgeladen.</p><nav aria-label="Projektlinks"><a href="README.md">Dokumentation</a><a href="tests/test-runner.html">Binärtests</a><a href="samples/wb13-tool-48x32-4colors.info" download>Beispiel-Icon</a><a href="THIRD_PARTY_LICENSES.md">Lizenzen</a></nav></footer>
+  </main>
+  <input type="file" id="info-input" accept=".info" hidden><input type="file" id="png-input" accept="image/png,.png" hidden>
+  <noscript>Diese Anwendung benötigt JavaScript. Alle Verarbeitung findet lokal statt.</noscript>
+</body>
+</html>
