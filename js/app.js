@@ -1,3 +1,4 @@
+import { importIcon } from "./icon-import.js";
 import { AmigaIcon } from "./amiga-icon.js";
 import { defaultPalette, hex, fromHex } from "./palette.js";
 import { History } from "./history.js";
@@ -108,6 +109,8 @@ function renderPalette() {
 }
 function render() {
   const icon = state.icon;
+  $("import-note").hidden = !icon.importNotice;
+  $("import-note").textContent = icon.importNotice || "";
   if (pen >= 2 ** icon.depth) pen = 0;
   for (const [id, value] of Object.entries({
     name: state.name,
@@ -408,10 +411,15 @@ $("save-info").addEventListener(
 );
 $("open-info").addEventListener("click", () => $("info-input").click());
 async function openInfo(file) {
-  if (file.size > 2 * 1024 * 1024)
-    throw new Error(".info-Datei ist zu groß (maximal 2 MiB).");
+  if (file.size > 32 * 1024 * 1024)
+    throw new Error(".info-Datei ist zu groß (maximal 32 MiB).");
+  ensureAppliedSize();
   const expected = revision,
-    icon = AmigaIcon.parse(await file.arrayBuffer());
+    icon = await importIcon(await file.arrayBuffer(), {
+      depth: state.icon.depth,
+      palette: state.palette,
+      alpha: Number($("alpha").value),
+    });
   if (revision !== expected)
     throw new Error(
       "Import abgebrochen: Der Editor wurde inzwischen geändert. Bitte erneut öffnen.",

@@ -333,3 +333,42 @@ export const AmigaIcon = {
     return icon;
   },
 };
+
+// Read the shared DiskObject container without interpreting modern image payloads.
+// Kept separate from the strict classic parse()/write() API.
+export function readIconContainer(buffer) {
+  const stream = new BinaryStream(buffer);
+  if (stream.readWord() !== 0xe310)
+    throw new Error("Ungültige .info-Datei: Magic E310 fehlt.");
+  const icon = readFields(stream, fields);
+  if (icon.version !== 1) throw new Error("Unbekannte DiskObject-Version.");
+  if (!(icon.flags & 4))
+    throw new Error("Border-Gadgets werden nicht unterstützt.");
+  const readPlanar = () => {
+    const img = readFields(stream, imageFields);
+    validateDimensions(img.width, img.height, 1);
+    if (img.depth > 8 || img.nextImage)
+      throw new Error("Nicht unterstützte klassische Image-Struktur.");
+    const size = Math.ceil(img.width / 16) * 2 * img.height * img.depth;
+    img.data = stream.readBytes(img.imageData ? size : 0);
+    if (img.depth && !img.imageData) throw new Error("ImageData fehlt.");
+    return img;
+  };
+  icon.drawerData = icon.hasDrawerData ? stream.readBytes(56) : null;
+  icon.normal = icon.gadgetRender ? readPlanar() : null;
+  icon.selected = icon.selectRender ? readPlanar() : null;
+  icon.defaultTool = icon.hasDefaultTool ? readText(stream) : null;
+  icon.toolTypes = [];
+  if (icon.hasToolTypes) {
+    const size = stream.readDWord();
+    if (size < 4 || size % 4 || size > 4100)
+      throw new Error("Ungültige ToolTypes-Länge.");
+    for (let i = 0; i < size / 4 - 1; i++)
+      icon.toolTypes.push(readText(stream));
+  }
+  icon.toolWindow = icon.hasToolWindow ? readText(stream) : null;
+  icon.drawerData2 =
+    icon.drawerData && icon.userData & 255 ? stream.readBytes(6) : null;
+  icon.extension = stream.readBytes(stream.length - stream.index);
+  return icon;
+}
