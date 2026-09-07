@@ -1,5 +1,7 @@
 # Amiga Workbench 1.x Icon Maker
 
+**Version 1.0.0 · Stable**
+
 Ein statischer HTML/CSS/Vanilla-JavaScript-Editor für klassische Amiga-`.info`-Dateien.
 Alle Pixel, PNGs und Binärdaten bleiben im Browser. Keine Uploads, Datenbank,
 Backend-API, CDN-Ressourcen oder Laufzeitabhängigkeit von Node.js.
