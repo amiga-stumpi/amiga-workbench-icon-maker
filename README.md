@@ -4,27 +4,21 @@ Ein statischer HTML/CSS/Vanilla-JavaScript-Editor für klassische Amiga-`.info`-
 Alle Pixel, PNGs und Binärdaten bleiben im Browser. Keine Uploads, Datenbank,
 Backend-API, CDN-Ressourcen oder Laufzeitabhängigkeit von Node.js.
 
-## Start und bereitgestellte Instanz
+## Start
 
-- Projekt: `/opt/amigaiconmaker`
-- Server im lokalen Netz: **http://192.168.25.60:8080/**
-- Auf dem Server selbst: http://127.0.0.1:8080/
-- Webserver: nginx 1.24.0, Ubuntu-Paket `1.24.0-2ubuntu7.17`, isoliert unter `.runtime/`.
-- Dienst: `systemctl --user status amiga-icon-maker.service`
+Den Projektordner auf einen statischen HTTP-Webserver kopieren und `index.html`
+aufrufen. Es gibt keinen Build-Schritt. Die JavaScript-Module brauchen HTTP(S);
+direktes Öffnen über `file://` wird nicht unterstützt.
 
-Zu Beginn war kein nginx/Apache aktiv und kein Webroot vorgegeben. Daher läuft
-nginx als eigener Benutzerdienst von `madzel` auf Port 8080. Es wurden keine
-bestehenden VHosts verändert. Der Dienst ist aktiviert; `loginctl` Linger ist
-für `madzel` eingeschaltet, damit er auch ohne Anmeldung läuft. Der Hostname ist
-`toolchain`; dessen Namensauflösung hängt vom lokalen Netz ab. Öffentliche
-Erreichbarkeit, DNS und HTTPS wurden nicht eingerichtet.
+Für einen lokalen Entwicklungstest im Projektverzeichnis beispielsweise:
 
-Alternativ den Projektordner auf einen beliebigen statischen HTTP-Webserver
-kopieren und `index.html` aufrufen. Es gibt keinen Build-Schritt. Die JS-Module
-brauchen HTTP(S); direktes Öffnen über `file://` wird nicht unterstützt.
-Für einen optionalen lokalen Entwicklungstest genügt beispielsweise
-`python3 -m http.server 8080 --directory /opt/amigaiconmaker` (nur wenn der Port frei ist).
-Python verarbeitet hierbei keine Icons, sondern liefert nur statische Dateien.
+```sh
+python3 -m http.server 8080 --bind 127.0.0.1
+```
+
+Anschließend **http://localhost:8080/** im Browser öffnen. Python ist hierbei
+nur ein optionaler statischer Entwicklungsserver und verarbeitet keine Icons.
+Alternativ kann jeder andere statische Webserver verwendet werden.
 
 Sobald die Seite geladen ist, funktionieren Zeichnen, lokale Dateiimporte und
 Downloads auch ohne Netzwerk. Ein erneutes Laden der Seite benötigt den
@@ -239,34 +233,26 @@ WBTOOL und StackSize 16384 prüfen und automatische Positionierung beobachten.
 Für einen Starttest zusätzlich ein geeignetes gleichnamiges Amiga-Programm
 neben dessen `.info` ablegen. Auch das 47-Pixel-Padding-Sample prüfen.
 
-## Serverbetrieb
+## Statische Bereitstellung
 
-Konfiguration: `deploy/nginx.conf`, Dienstdatei: `deploy/amiga-icon-maker.service`.
-Nur statische GET/HEAD-Zugriffe sind erlaubt; versteckte Verzeichnisse (inklusive
-`.git`/`.runtime`) und Deployment-Skripte sind nicht über HTTP abrufbar.
-Die Dateien benötigen nur normale Leserechte, kein `chmod 777`.
+Die Anwendung kann mit nginx, Apache oder einem statischen Hosting-Dienst
+bereitgestellt werden. Als Webroot dient das Projektverzeichnis; die Startdatei
+ist `index.html`. HTML, CSS und JavaScript müssen mit passenden MIME-Typen
+ausgeliefert werden. Eine Backend-Konfiguration ist nicht erforderlich.
 
-Vor einem Reload zwingend Konfiguration testen (der Dienst führt denselben Test
-auch automatisch vor Start/Reload aus):
+- Webroot, Hostname, Port und gegebenenfalls HTTPS für die eigene Umgebung wählen.
+- Dem Webserver Leserechte auf die statischen Dateien geben; Schreibrechte auf
+  das Projektverzeichnis sind für den Betrieb nicht erforderlich.
+- Versteckte Verzeichnisse wie `.git` sowie lokale Laufzeitdateien und
+  Deployment-Konfigurationen vom öffentlichen Zugriff ausschließen.
+- Bestehende Websites über einen separaten VHost oder Webroot erhalten.
+- Vor Änderungen am laufenden Webserver dessen Konfiguration prüfen, etwa mit
+  `nginx -t` oder `apachectl configtest`. Erst nach erfolgreichem Test neu laden.
 
-```sh
-/opt/amigaiconmaker/.runtime/nginx/usr/sbin/nginx -t \
-  -p /opt/amigaiconmaker/.runtime/ \
-  -c /opt/amigaiconmaker/deploy/nginx.conf
-# Nur bei erfolgreichem Test:
-systemctl --user reload amiga-icon-maker.service
-```
-
-Stop/Start: `systemctl --user stop amiga-icon-maker.service` bzw. `start`.
-Fehlerprotokoll: `.runtime/error.log`; Dienstlog:
-`journalctl --user -u amiga-icon-maker.service`.
-
-Das isolierte nginx-Paket wird nicht automatisch von systemweitem apt aktualisiert.
-Für Updates ein aktuelles Ubuntu-nginx-Paket mit `apt download nginx` beziehen,
-mit `dpkg-deb -x` in ein neues Verzeichnis entpacken, den neuen Binary-Pfad testen
-und im Dienst ersetzen; anschließend Dienst neu starten. Alternativ kann ein
-Administrator die statischen Dateien in eine regulär gepflegte Webserver-
-Installation übernehmen. `.runtime/` ist nicht Teil des Git-Repositories.
+Die Dateien unter `deploy/` zeigen eine mögliche nginx-/systemd-Einrichtung.
+Darin enthaltene Pfade und Betriebsparameter müssen vor Verwendung an die eigene
+Installation angepasst werden. nginx und systemd sind keine Voraussetzungen
+für die Anwendung; ein statischer HTTP-Webserver genügt.
 
 ## Herkunft und technische Quellen
 
