@@ -55,11 +55,30 @@ selbst kein ausführbares Programm.
 Dateigrenzen, Images und Metadaten werden geprüft, die Bitplanes dekodiert und
 die Zustände angezeigt. Fehler erscheinen in der Statuszeile; der bisherige
 Arbeitsstand bleibt bei fehlgeschlagenem Import erhalten. Das Laden ist mit Undo
-rückgängig zu machen. Dateien sind auf 2 MiB begrenzt.
+rückgängig zu machen. Dateien sind auf 32 MiB begrenzt.
+
+Auch **NewIcons, ColorIcons/GlowIcons, OS4-ARGB und PNG-/DualPNG-Icons**
+lassen sich über denselben Dialog oder per Drag & Drop öffnen. Die modernen
+Bilddaten werden mit ihrem Alphakanal dekodiert und auf die aktuell gewählte
+Palette und Farbtiefe reduziert (standardmäßig 4 Workbench-Pens). Normal und
+Selected bleiben getrennt. Ein dauerhafter Hinweis nennt das Quellformat und
+die Konvertierung; der Download bleibt ein **klassisches WB1.x-.info**.
+
+Die Quellgröße wird bis 256 × 256 Pixel übernommen. Größere PNG-Icons werden
+proportional eingepasst; bei unterschiedlich großen Zuständen wird die kleinere
+Fläche rechts/unten mit Pen 0 aufgefüllt. Der PNG-Importmodus für einzelne
+Editorbilder gilt nicht für diesen `.info`-Import.
+
+DiskObject-Metadaten wie Typ, DefaultTool und reguläre ToolTypes werden soweit
+unterstützt übernommen. NewIcon-Bilddaten in ToolTypes werden entfernt.
+PNG-`icOn`-Metadaten werden derzeit nicht übernommen: Ein Hinweis fordert zur
+Prüfung von Icon Type und Startparametern auf. Für PNG-Icons gelten zunächst
+WBTOOL, StackSize 16384 und automatische Position. Ein modernes Icon wird nicht
+verlustfrei in seinem Quellformat gespeichert.
 
 Ein fehlendes Selected wird als bearbeitbare Normal-Kopie angezeigt, aber sein
 Export bleibt ausdrücklich deaktiviert. Ohne Selected exportiert der Writer
-den klassischen Complement-Highlight-Modus. StackSize 0 in einer Altdatei wird
+den klassischen Complement-Highlight-Modus. StackSize 0 in einer klassischen Altdatei wird
 im UI mit Hinweis auf 4096 gesetzt; der Writer verlangt positive Werte.
 
 Image-Abmessungen und positive Versätze innerhalb der Gadget-Fläche werden beim
@@ -125,17 +144,30 @@ Binärformats; insbesondere 8 Pens benötigen einen passenden Bildschirm und
 sind nicht als Standard-WB1.3-Darstellung validiert. Die Amiga-Icon-Dokumentation
 empfiehlt für Workbench-Images Depth 2, PlanePick 3 und PlaneOnOff 0.
 
-Nicht unterstützt: NewIcons (IM1=/IM2=-ToolTypes), ColorIcon/GlowIcon (FORM ICON),
-PNG/DualPNG/OS4-Icons, neuere userData-Revisionen, ARGB, Border-Gadgets,
-verkettete Images, Plane-Zuordnungen jenseits von Pen 7, Bilder außerhalb der
-Gadget-Fläche und unbekannte Dateianhänge. Sie werden mit Fehlermeldung
-abgelehnt, nicht stillschweigend zu OldIcons konvertiert.
+Unterstützter Import:
+
+| Format                          | Verarbeitung                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| Klassische WB1.x-OldIcons       | Pen-Indizes und unterstützte Metadaten erhalten                                  |
+| Planare OS2+/OS3-/MagicWB-Icons | Bis 8 Pens, Quellfarben anhand einer üblichen OS2+/MagicWB-Palette interpretiert |
+| NewIcons                        | IM1=/IM2=-ToolTypes, mehrzeilige Paletten, 7-Bit-Kodierung und Zero-RLE          |
+| ColorIcons / GlowIcons          | FORM ICON, FACE/IMAG, unkomprimierte oder RLE-komprimierte Bilder und Paletten   |
+| OS4 TrueColor / ARGB            | FORM ICON mit ARGB-Chunks, zlib und Alphakanal                                   |
+| PNG / DualPNG                   | Ein oder zwei vollständige PNG-Bilder, Chunk-Grenzen und CRC geprüft             |
+
+Nicht unterstützt: Export in modernen Formaten, PNG-`icOn`-Metadaten,
+Border-Gadgets, verkettete Images, rein planare Icons mit mehr als 8 Pens ohne
+eingebettete Palette, unbekannte Kompressionsarten und unbekannte Dateianhänge
+außerhalb gültiger IFF-Chunks. Solche Daten führen zu einer Fehlermeldung statt
+einer stillen Übernahme des klassischen Ersatzbildes.
 
 **DrawerData:** WBDISK, WBDRAWER und WBGARBAGE benötigen laut Amiga-Dokumentation
 DrawerData. Diese Typen sind auswählbar, Export ohne DrawerData ist gesperrt.
 Aus einer klassischen Vorlage gelesene 56-Byte-DrawerData bleiben erhalten.
 Neue DrawerData erzeugen oder deren Fensterparameter bearbeiten ist noch nicht
-implementiert. OS2+-Drawer-Erweiterungen werden nicht importiert.
+implementiert. Beim Import moderner DiskObjects werden die 56 klassischen
+DrawerData-Bytes erhalten; die zusätzlichen sechs OS2+-Bytes werden gelesen,
+aber mit Hinweis nicht in den WB1.x-Export übernommen.
 
 DefaultTool und ToolTypes sind bereits im UI und Binärkern implementiert:
 Latin-1, keine eingebetteten Nullzeichen, maximal 4095 Zeichen pro Text und
@@ -145,7 +177,7 @@ Parser/Writer erhalten, hat jedoch kein eigenes Bearbeitungsfeld.
 
 Noch offen: echte WinUAE-/Amiga-Abnahme, DrawerData-Erzeugung/Editor,
 Clipboard-Import, Dithering und dauerhafte Browser-Projektspeicherung.
-Neuere Iconformate gehören ausdrücklich nicht zum Umfang dieser Version.
+Export in modernen Formaten und die Übernahme von PNG-Icon-Metadaten sind ebenfalls noch offen.
 
 ## Binärkern-API
 
@@ -168,6 +200,25 @@ const restored = AmigaIcon.parse(buffer);
 // restored.normal.pixels / restored.selected.pixels: flache Pen-Arrays
 ```
 
+Der klassische synchrone Parser bleibt bewusst auf OldIcons beschränkt.
+Für den erweiterten Browserimport gibt es eine separate asynchrone API:
+
+```javascript
+import { importIcon } from "./js/icon-import.js";
+import { defaultPalette } from "./js/palette.js";
+
+const icon = await importIcon(arrayBuffer, {
+  depth: 2,
+  palette: defaultPalette(),
+  alpha: 128,
+});
+// icon.sourceFormat / icon.importNotice beschreiben eine erfolgte Konvertierung.
+const classicBuffer = AmigaIcon.write(icon);
+```
+
+ARGB nutzt die browserseitige `DecompressionStream`-API, PNG den nativen
+Bilddecoder. Zusätzliche Bibliotheken oder Netzwerkzugriffe sind nicht nötig.
+
 `selectedPixels: null` beim Erzeugen oder `selectedEnabled = false` deaktiviert
 den Selected-Export. `BinaryStream` arbeitet ausschließlich Big Endian;
 `readDWord()` ist unsigned, `readLong()` signed. `readBits(count, bitPosition,
@@ -184,12 +235,15 @@ npm test
 npm run samples
 ```
 
-Oder **[Browser-Testseite](tests/test-runner.html)** öffnen. 101 Tests prüfen
+Oder **[Browser-Testseite](tests/test-runner.html)** öffnen. 114 Tests prüfen
 Big Endian, signed/unsigned Grenzen, bitweise Referenzwerte, alle sechs Muster,
 PNG-Alpha/Farbzuordnung, History und Bildoperationen. Für die Größen
 16×16/1, 32×32/2, 48×32/2, 47×31/2, 17×16/2, 33×16/2 und 48×32/3 werden
 Padding und vollständige Normal-/Selected-Roundtrips geprüft. Jede mögliche
-Verkürzung einer Testdatei muss einen Fehler auslösen.
+Verkürzung einer Testdatei muss einen Fehler auslösen. Zusätzliche synthetische
+Tests prüfen NewIcons mit mehrzeiliger Palette, bitweise ColorIcon-RLE,
+Palettenübernahme zwischen Zuständen, OS4 mit beiden bekannten Längenvarianten,
+begrenzte Dekompression sowie PNG-Chunk-Grenzen und CRC.
 
 Optionaler Integrationstest mit extern installiertem Playwright:
 
@@ -212,6 +266,26 @@ node scripts/verify-reference.mjs /path/to/Amiga-Icon-Editor
 
 Dieser vergleicht alle Sample-Pixel und zentrale Metadaten mit dem
 Referenzparser und liest zusätzlich eine durch dessen Writer erzeugte Datei.
+
+Erweiterte Offline-Browsertests mit synthetischen modernen Icons:
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node tests/modern-browser.test.mjs
+```
+
+Optional kann `ICON_REFERENCE=/path/to/Amiga-Icon-converter` gesetzt werden, um
+auch die externen Beispiel-Icons aus Steffests Konverter zu testen. Diese
+Bilddateien werden nicht mit diesem Projekt verteilt. Der unabhängige
+Pixelvergleich ist separat ausführbar:
+
+```sh
+node scripts/verify-modern-reference.mjs /path/to/Amiga-Icon-converter
+```
+
+Die modernen Importtests wurden mit Chromium und Firefox offline ausgeführt.
+15 externe moderne Icons wurden vor der Farbreduktion pixelgenau mit dem
+Referenzdecoder verglichen. Beide Browser prüften außerdem sechs synthetische
+Formatfälle und die 21 externen Beispiel-Icons einschließlich klassischem Export.
 
 Erzeugte Dateien:
 
@@ -261,7 +335,13 @@ BinaryStream-API und DiskObject-/Image-Feldabfolge wurden aus
 adaptiert, Referenzrevision `52fb20f51c90e45b0243c72e7ef83f943a387483`.
 `_script/lib/file.js` und `_script/lib/icon.js` sind die wesentlichen Quellen;
 `main.js`, `imageProcessing.js`, `quantize.js` wurden geprüft, nicht übernommen.
-Bitplanes, Palette-Quantisierung, UI und History sind eigenständige Implementierungen.
+Die modernen Decoder orientieren sich zusätzlich an
+[Amiga-Icon-converter](https://github.com/steffest/Amiga-Icon-converter),
+Revision `8718bdb1a0b7be42c5ea1d1ca0cfb7f05065f5dc` (MIT, Steffest).
+ColorIcon-RLE, NewIcon-Symbole und die ARGB-Feldabfolge wurden daraus adaptiert,
+mit zusätzlichen Grenzen und korrigierter mehrzeiliger Palettenbehandlung.
+PNG-Containerprüfung, begrenzte native Dekompression, Bitplanes,
+Palette-Quantisierung, UI und History sind eigenständige Implementierungen.
 Die originalen Copyright-Vermerke und MIT-Lizenz stehen vollständig in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Eigener Code: [MIT](LICENSE).
 

@@ -153,11 +153,11 @@ for (const [browserName, type] of [
     assert.equal(imports.crop[40 * 48 + 30], 3);
     // Unsupported files show inline errors and retain the document.
     await page.locator("#info-input").setInputFiles({
-      name: "modern.info",
+      name: "invalid.info",
       mimeType: "application/octet-stream",
-      buffer: png,
+      buffer: Buffer.from([0, 0, 0, 0]),
     });
-    await page.locator("#status").filter({ hasText: "neueres" }).waitFor();
+    await page.locator("#status").filter({ hasText: "Magic" }).waitFor();
     assert.equal(await page.locator("#name").inputValue(), "Wetter");
     await page.locator("#type").selectOption("2");
     await page.click("#save-info");
@@ -218,15 +218,13 @@ for (const [browserName, type] of [
           { type: "image/png" },
         ),
       );
-      document
-        .querySelector("#selected-panel")
-        .dispatchEvent(
-          new DragEvent("drop", {
-            bubbles: true,
-            cancelable: true,
-            dataTransfer: dt,
-          }),
-        );
+      document.querySelector("#selected-panel").dispatchEvent(
+        new DragEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dt,
+        }),
+      );
     }, png.toString("base64"));
     await page.locator("#status").filter({ hasText: "PNG lokal" }).waitFor();
     assert.equal(await page.locator("#selected-enabled").isChecked(), true);

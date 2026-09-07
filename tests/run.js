@@ -1,3 +1,4 @@
+import "./modern-icon.test.js";
 import "./editor.test.js";
 import "./bitplanes.test.js";
 import "./amiga-icon.test.js";
