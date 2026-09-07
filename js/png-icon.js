@@ -1,3 +1,4 @@
+import { appError, t } from "./i18n.js";
 import { BinaryStream } from "./binary-stream.js";
 
 const crcTable = Uint32Array.from({ length: 256 }, (_, i) => {
@@ -25,7 +26,7 @@ export function splitPNGIcon(buffer) {
   while (stream.index < stream.length) {
     const start = stream.index;
     if (images.length === 2 || !isPNG(stream.readBytes(8)))
-      throw new Error("Ungültiger PNG-/DualPNG-Container.");
+      throw appError("Ungültiger PNG-/DualPNG-Container.");
     let width,
       height,
       complete = false,
@@ -41,26 +42,26 @@ export function splitPNGIcon(buffer) {
         length + 4,
       );
       if (pngCRC(checksumBytes) !== expectedCRC)
-        throw new Error("PNG-Icon enthält einen ungültigen CRC-Prüfwert.");
-      if (!width && kind !== "IHDR") throw new Error("PNG-IHDR fehlt.");
+        throw appError("PNG-Icon enthält einen ungültigen CRC-Prüfwert.");
+      if (!width && kind !== "IHDR") throw appError("PNG-IHDR fehlt.");
       if (kind === "IHDR") {
-        if (width || length !== 13) throw new Error("Ungültiger PNG-IHDR.");
+        if (width || length !== 13) throw appError("Ungültiger PNG-IHDR.");
         const view = new DataView(data.buffer);
         width = view.getUint32(0);
         height = view.getUint32(4);
         if (!width || !height || width * height > 16777216)
-          throw new Error(
+          throw appError(
             "PNG-Icon überschreitet 16 Megapixel oder hat ungültige Maße.",
           );
       }
       if (kind === "icOn") metadata = data;
       if (kind === "IEND") {
-        if (length) throw new Error("Ungültiger PNG-IEND.");
+        if (length) throw appError("Ungültiger PNG-IEND.");
         complete = true;
         break;
       }
     }
-    if (!complete) throw new Error("PNG-Icon ist abgeschnitten.");
+    if (!complete) throw appError("PNG-Icon ist abgeschnitten.");
     images.push({
       width,
       height,
@@ -68,11 +69,13 @@ export function splitPNGIcon(buffer) {
       metadata,
     });
   }
-  if (!images.length) throw new Error("PNG-Bild fehlt.");
+  if (!images.length) throw appError("PNG-Bild fehlt.");
   // icOn encodings vary between systems; do not silently guess icon type/tool data.
   if (images.some((img) => img.metadata))
     notices.push(
-      "PNG-icOn-Metadaten werden nicht übernommen; Icon Type und Startparameter bitte prüfen.",
+      t(
+        "PNG-icOn-Metadaten werden nicht übernommen; Icon Type und Startparameter bitte prüfen.",
+      ),
     );
   return {
     images,
@@ -90,11 +93,11 @@ export async function pngRGBA(image) {
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = () =>
-        reject(new Error("PNG-Icon konnte nicht dekodiert werden."));
+        reject(appError("PNG-Icon konnte nicht dekodiert werden."));
       img.src = url;
     });
     if (img.width !== image.width || img.height !== image.height)
-      throw new Error("PNG-Maße stimmen nicht.");
+      throw appError("PNG-Maße stimmen nicht.");
     // Large PNGs are fitted into the editor limit while retaining aspect ratio.
     const scale = Math.min(1, 256 / img.width, 256 / img.height);
     const width = Math.max(1, Math.round(img.width * scale)),

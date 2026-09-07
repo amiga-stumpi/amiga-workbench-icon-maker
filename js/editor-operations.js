@@ -1,3 +1,4 @@
+import { appError } from "./i18n.js";
 import { validateDimensions, validatePixels } from "./amiga-bitplanes.js";
 export function resizeIcon(icon, width, height, depth) {
   validateDimensions(width, height, depth);
@@ -28,9 +29,9 @@ export function resizeIcon(icon, width, height, depth) {
 export function generateSelected(pixels, depth, mode) {
   const max = (1 << depth) - 1;
   if (mode === "swap13" && depth < 2)
-    throw new Error("Pen 3 benötigt mindestens 2 Bitplanes.");
+    throw appError("Pen 3 benötigt mindestens 2 Bitplanes.");
   if (mode === "swap12" && depth < 2)
-    throw new Error("Pen 2 benötigt mindestens 2 Bitplanes.");
+    throw appError("Pen 2 benötigt mindestens 2 Bitplanes.");
   return pixels.map((p) =>
     mode === "invert"
       ? max - p

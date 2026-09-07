@@ -1,3 +1,4 @@
+import { appError, t, errorMessage, localizePage } from "./i18n.js";
 import { importIcon } from "./icon-import.js";
 import { AmigaIcon } from "./amiga-icon.js";
 import { defaultPalette, hex, fromHex } from "./palette.js";
@@ -14,6 +15,7 @@ import {
   generateSelected,
   transform,
 } from "./editor-operations.js";
+localizePage();
 const $ = (id) => document.getElementById(id);
 let state = {
   icon: AmigaIcon.create(),
@@ -38,13 +40,14 @@ function guard(action) {
     try {
       await action(...args);
     } catch (e) {
-      message(e.message, true);
+      message(errorMessage(e), true);
     }
   };
 }
 function setActive(key) {
   active = key;
-  $("active-label").textContent = key === "normal" ? "Normal" : "Selected";
+  $("active-label").textContent =
+    key === "normal" ? t("Normal") : t("Selected");
   for (const id of ["normal", "selected"])
     $(`${id}-panel`).classList.toggle("active", id === key);
 }
@@ -73,7 +76,7 @@ function renderPalette() {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("aria-pressed", String(pen === i));
-    button.setAttribute("aria-label", `Pen ${i} wählen`);
+    button.setAttribute("aria-label", t("Pen {pen} wählen", { pen: i }));
     const swatch = document.createElement("span");
     swatch.className = "swatch";
     swatch.style.backgroundColor = hex(state.palette[i]);
@@ -85,11 +88,11 @@ function renderPalette() {
     const color = document.createElement("input");
     color.type = "color";
     color.value = hex(state.palette[i]);
-    color.setAttribute("aria-label", `Vorschaufarbe Pen ${i}`);
+    color.setAttribute("aria-label", t("Vorschaufarbe Pen {pen}", { pen: i }));
     color.addEventListener("change", () =>
       mutate(() => {
         state.palette[i] = fromHex(color.value);
-      }, "Vorschaufarbe geändert. Die Palette wird nicht in .info gespeichert."),
+      }, t("Vorschaufarbe geändert. Die Palette wird nicht in .info gespeichert.")),
     );
     group.append(button, color);
     $("palette").append(group);
@@ -156,8 +159,22 @@ function render() {
   }
   const pos = (n) =>
     `0x${(n >>> 0).toString(16).padStart(8, "0").toUpperCase()}`;
-  $("metadata").textContent =
-    `Magic: E310 · Version: ${icon.version}\nType: ${icon.type} · ${AmigaIcon.TYPES[icon.type].split(" · ")[0]}\nGadget: ${icon.width} × ${icon.height}\nDepth: ${icon.depth} · Pens: ${2 ** icon.depth}\nStackSize: ${icon.stackSize}\nCurrentX: ${pos(icon.currentX)}\nCurrentY: ${pos(icon.currentY)}\nuserData: ${icon.userData} → Export: 0\nPlanePick: ${(1 << icon.depth) - 1}\nDrawerData: ${icon.drawerData ? "56 Bytes" : "keine"}\nSelected: ${icon.selectedEnabled ? "ja" : "deaktiviert"}`;
+  $("metadata").textContent = t("metadata", {
+    version: icon.version,
+    type: icon.type,
+    typeName: AmigaIcon.TYPES[icon.type].split(" · ")[0],
+    width: icon.width,
+    height: icon.height,
+    depth: icon.depth,
+    pens: 2 ** icon.depth,
+    stack: icon.stackSize,
+    x: pos(icon.currentX),
+    y: pos(icon.currentY),
+    userData: icon.userData,
+    planePick: (1 << icon.depth) - 1,
+    drawer: icon.drawerData ? "56 Bytes" : t("keine"),
+    selected: icon.selectedEnabled ? t("ja") : t("deaktiviert"),
+  });
 }
 for (const key of ["normal", "selected"]) {
   editors[key] = new PixelEditor($(`${key}-canvas`), {
@@ -169,13 +186,15 @@ for (const key of ["normal", "selected"]) {
       pen = value;
       renderPalette();
     },
-    onCommit: () => commit("Pixel bearbeitet."),
+    onCommit: () => commit(t("Pixel bearbeitet.")),
     onActive: () => setActive(key),
   });
   editors[key].zoom = Number($("zoom").value);
 }
 for (const [value, label] of Object.entries(AmigaIcon.TYPES))
-  $("type").add(new Option(label, value));
+  $("type").add(
+    new Option(label.split(" · ")[0] + " · " + t(label.split(" · ")[1]), value),
+  );
 for (const button of document.querySelectorAll("[data-tool]"))
   button.addEventListener("click", () => {
     tool = button.dataset.tool;
@@ -199,25 +218,27 @@ $("preset").addEventListener("click", () =>
     sizeDraft = null;
     state.icon = AmigaIcon.create();
     state.palette = defaultPalette();
-  }, "Workbench 1.3 Tool Icon angelegt. Vorheriger Stand bleibt über Undo erreichbar."),
+  }, t("Workbench 1.3 Tool Icon angelegt. Vorheriger Stand bleibt über Undo erreichbar.")),
 );
 $("reset-palette").addEventListener("click", () =>
   mutate(() => {
     state.palette = defaultPalette();
-  }, "Workbench-Palette zurückgesetzt."),
+  }, t("Workbench-Palette zurückgesetzt.")),
 );
 $("name").addEventListener("change", () =>
   mutate(() => {
     state.name = $("name").value;
-  }, "Dateiname geändert."),
+  }, t("Dateiname geändert.")),
 );
 $("type").addEventListener("change", () => {
   mutate(() => {
     state.icon.type = Number($("type").value);
-  }, "Icon Type geändert.");
+  }, t("Icon Type geändert."));
   if ([1, 2, 5].includes(state.icon.type) && !state.icon.drawerData)
     message(
-      "Dieser Typ benötigt DrawerData. Öffne eine klassische passende .info als Vorlage; Export ist ohne DrawerData gesperrt.",
+      t(
+        "Dieser Typ benötigt DrawerData. Öffne eine klassische passende .info als Vorlage; Export ist ohne DrawerData gesperrt.",
+      ),
       true,
     );
 });
@@ -238,7 +259,7 @@ $("apply-size").addEventListener(
         Number($("depth").value),
       );
       sizeDraft = null;
-    }, "Größe und Tiefe angewendet."),
+    }, t("Größe und Tiefe angewendet.")),
   ),
 );
 $("stack-size").addEventListener(
@@ -246,12 +267,12 @@ $("stack-size").addEventListener(
   guard(() => {
     const value = Number($("stack-size").value);
     if (!Number.isInteger(value) || value < 1 || value > 0x7fffffff)
-      throw new Error(
+      throw appError(
         "StackSize muss ein positiver Integer bis 2147483647 sein.",
       );
     mutate(() => {
       state.icon.stackSize = value;
-    }, "StackSize geändert.");
+    }, t("StackSize geändert."));
   }),
 );
 $("automatic").addEventListener("change", () =>
@@ -259,7 +280,7 @@ $("automatic").addEventListener("change", () =>
     state.icon.currentX = state.icon.currentY = $("automatic").checked
       ? AmigaIcon.NO_ICON_POSITION
       : 0;
-  }, "Workbench-Position geändert."),
+  }, t("Workbench-Position geändert.")),
 );
 for (const [id, key] of [
   ["current-x", "currentX"],
@@ -275,17 +296,17 @@ for (const [id, key] of [
           value < -0x7fffffff ||
           value > 0x7fffffff
         )
-          throw new Error(
+          throw appError(
             "Position muss ein gültiger signed 32-Bit-Integer sein.",
           );
         state.icon[key] = value >>> 0;
-      }, "Position geändert."),
+      }, t("Position geändert.")),
     ),
   );
 $("selected-enabled").addEventListener("change", () =>
   mutate(() => {
     state.icon.selectedEnabled = $("selected-enabled").checked;
-  }, "Selected-Export geändert."),
+  }, t("Selected-Export geändert.")),
 );
 for (const [id, key] of [
   ["default-tool", "defaultTool"],
@@ -300,7 +321,7 @@ for (const [id, key] of [
           key === "toolTypes"
             ? value.split(/\r?\n/).filter(Boolean)
             : value || null;
-      }, "Amiga-Metadaten geändert."),
+      }, t("Amiga-Metadaten geändert.")),
     ),
   );
 function restore(direction) {
@@ -312,8 +333,8 @@ function restore(direction) {
     render();
     message(
       direction === "undo"
-        ? "Schritt rückgängig gemacht."
-        : "Schritt wiederhergestellt.",
+        ? t("Schritt rückgängig gemacht.")
+        : t("Schritt wiederhergestellt."),
     );
   }
 }
@@ -333,7 +354,9 @@ function copy(from, to) {
       state.icon[to] = structuredClone(state.icon[from]);
       if (to === "selected") state.icon.selectedEnabled = true;
     },
-    `${from === "normal" ? "Normal" : "Selected"} kopiert.`,
+    t("{state} kopiert.", {
+      state: from === "normal" ? t("Normal") : t("Selected"),
+    }),
   );
 }
 $("copy-to-selected").addEventListener("click", () =>
@@ -351,14 +374,14 @@ $("generate").addEventListener(
         $("selected-mode").value,
       );
       state.icon.selectedEnabled = true;
-    }, "Selected erzeugt und bereit zur manuellen Bearbeitung."),
+    }, t("Selected erzeugt und bereit zur manuellen Bearbeitung.")),
   ),
 );
 for (const button of document.querySelectorAll("[data-clear]"))
   button.addEventListener("click", () =>
     mutate(
       () => state.icon[button.dataset.clear].pixels.fill(0),
-      "Bild mit Pen 0 geleert. Undo stellt es wieder her.",
+      t("Bild mit Pen 0 geleert. Undo stellt es wieder her."),
     ),
   );
 for (const button of document.querySelectorAll("[data-transform]"))
@@ -368,7 +391,7 @@ for (const button of document.querySelectorAll("[data-transform]"))
         state.icon[active],
         button.dataset.transform,
       );
-    }, "Bild transformiert."),
+    }, t("Bild transformiert.")),
   );
 $("swap-pens").addEventListener("click", () =>
   mutate(() => {
@@ -377,7 +400,7 @@ $("swap-pens").addEventListener("click", () =>
     state.icon[active].pixels = state.icon[active].pixels.map((p) =>
       p === a ? b : p === b ? a : p,
     );
-  }, "Pens getauscht."),
+  }, t("Pens getauscht.")),
 );
 function ensureAppliedSize() {
   if (
@@ -385,7 +408,7 @@ function ensureAppliedSize() {
     Number($("height").value) !== state.icon.height ||
     Number($("depth").value) !== state.icon.depth
   )
-    throw new Error("Bitte zuerst „Größe / Tiefe anwenden“ wählen.");
+    throw appError("Bitte zuerst „Größe / Tiefe anwenden“ wählen.");
 }
 $("save-info").addEventListener(
   "click",
@@ -394,11 +417,11 @@ $("save-info").addEventListener(
     const name = iconFilename($("name").value);
     const stack = Number($("stack-size").value);
     if (!Number.isInteger(stack) || stack < 1 || stack > 0x7fffffff)
-      throw new Error(
+      throw appError(
         "StackSize muss ein positiver Integer bis 2147483647 sein.",
       );
     if (stack !== state.icon.stackSize)
-      throw new Error("Bitte die StackSize-Eingabe zuerst abschließen.");
+      throw appError("Bitte die StackSize-Eingabe zuerst abschließen.");
     download(
       new Blob([AmigaIcon.write(state.icon)], {
         type: "application/octet-stream",
@@ -406,14 +429,19 @@ $("save-info").addEventListener(
       name,
     );
     message(
-      `${name} erstellt · ${state.icon.width} × ${state.icon.height} · ${2 ** state.icon.depth} Pens · userData 0.`,
+      t("{name} erstellt · {width} × {height} · {pens} Pens · userData 0.", {
+        name,
+        width: state.icon.width,
+        height: state.icon.height,
+        pens: 2 ** state.icon.depth,
+      }),
     );
   }),
 );
 $("open-info").addEventListener("click", () => $("info-input").click());
 async function openInfo(file) {
   if (file.size > 32 * 1024 * 1024)
-    throw new Error(".info-Datei ist zu groß (maximal 32 MiB).");
+    throw appError(".info-Datei ist zu groß (maximal 32 MiB).");
   ensureAppliedSize();
   const expected = revision,
     icon = await importIcon(await file.arrayBuffer(), {
@@ -422,7 +450,7 @@ async function openInfo(file) {
       alpha: Number($("alpha").value),
     });
   if (revision !== expected)
-    throw new Error(
+    throw appError(
       "Import abgebrochen: Der Editor wurde inzwischen geändert. Bitte erneut öffnen.",
     );
   const hadSelected = !!icon.selected;
@@ -436,7 +464,15 @@ async function openInfo(file) {
       state.icon = icon;
       state.name = file.name.replace(/\.info$/i, "");
     },
-    `${file.name} geladen.${hadSelected ? "" : " Kein Selected vorhanden; Export deaktiviert."}${zeroStack ? " StackSize 0 wurde auf den klassischen Standard 4096 gesetzt." : ""}`,
+    [
+      t("{name} geladen.", { name: file.name }),
+      hadSelected ? "" : t("Kein Selected vorhanden; Export deaktiviert."),
+      zeroStack
+        ? t("StackSize 0 wurde auf den klassischen Standard 4096 gesetzt.")
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
   );
 }
 $("info-input").addEventListener(
@@ -456,7 +492,7 @@ async function loadPNG(file, key) {
   ensureAppliedSize();
   const threshold = Number($("alpha").value);
   if (!Number.isInteger(threshold) || threshold < 0 || threshold > 255)
-    throw new Error("Alpha-Schwellenwert muss zwischen 0 und 255 liegen.");
+    throw appError("Alpha-Schwellenwert muss zwischen 0 und 255 liegen.");
   const expected = revision,
     icon = state.icon;
   const pixels = await importPNG(
@@ -468,7 +504,7 @@ async function loadPNG(file, key) {
     threshold,
   );
   if (revision !== expected)
-    throw new Error(
+    throw appError(
       "PNG-Import abgebrochen: Der Editor wurde inzwischen geändert. Bitte erneut importieren.",
     );
   mutate(
@@ -476,7 +512,11 @@ async function loadPNG(file, key) {
       state.icon[key].pixels = pixels;
       if (key === "selected") state.icon.selectedEnabled = true;
     },
-    `PNG lokal auf ${icon.width} × ${icon.height} und ${2 ** icon.depth} Pens reduziert.`,
+    t("PNG lokal auf {width} × {height} und {pens} Pens reduziert.", {
+      width: icon.width,
+      height: icon.height,
+      pens: 2 ** icon.depth,
+    }),
   );
   setActive(key);
 }
@@ -500,9 +540,9 @@ for (const button of document.querySelectorAll("[data-png]"))
           "image/png",
         ),
       );
-      if (!blob) throw new Error("PNG konnte nicht erzeugt werden.");
+      if (!blob) throw appError("PNG konnte nicht erzeugt werden.");
       download(blob, `${name}-${key}.png`);
-      message("PNG mit aktueller Vorschaufarbpalette gespeichert.");
+      message(t("PNG mit aktueller Vorschaufarbpalette gespeichert."));
     }),
   );
 document.addEventListener("dragover", (e) => {

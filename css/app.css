@@ -597,7 +597,7 @@ footer nav {
   background: #edf0f4;
 }
 #selected-panel.excluded .panel-title strong::after {
-  content: " · nicht exportiert";
+  content: attr(data-excluded-label);
   font-size: 9px;
   font-weight: 400;
 }

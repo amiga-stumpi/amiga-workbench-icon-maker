@@ -1,3 +1,4 @@
+import { appError } from "./i18n.js";
 // Format decoding adapted from Steffest's Amiga-Icon-converter/icon.js.
 // Copyright (c) 2019-2023 Steffest - dev@stef.be. MIT: ../THIRD_PARTY_LICENSES.md.
 import { BinaryStream } from "./binary-stream.js";
@@ -9,11 +10,13 @@ function streamFor(bytes) {
 export function indexedRGBA(width, height, pixels, palette, transparent = -1) {
   validateDimensions(width, height, 1);
   if (pixels.length !== width * height)
-    throw new Error("Unvollständiges Icon-Bild.");
+    throw appError("Unvollständiges Icon-Bild.");
   const rgba = new Uint8ClampedArray(pixels.length * 4);
   pixels.forEach((pen, i) => {
     if (!palette[pen])
-      throw new Error(`Icon-Palette enthält Farbindex ${pen} nicht.`);
+      throw appError("Icon-Palette enthält Farbindex {pen} nicht.", {
+        pen: pen,
+      });
     rgba.set([...palette[pen], pen === transparent ? 0 : 255], i * 4);
   });
   return { width, height, rgba };
@@ -23,7 +26,7 @@ export function indexedRGBA(width, height, pixels, palette, transparent = -1) {
 // sample = depth bits. Decode by expected output count, never by padding bits.
 export function unpackIconRLE(bytes, depth, count) {
   if (depth < 1 || depth > 8)
-    throw new Error("Ungültige komprimierte Farbtiefe.");
+    throw appError("Ungültige komprimierte Farbtiefe.");
   const stream = streamFor(bytes),
     result = new Uint8Array(count);
   let bit = 0,
@@ -38,7 +41,7 @@ export function unpackIconRLE(bytes, depth, count) {
     if (control === 128) continue;
     const length = control < 128 ? control + 1 : 257 - control;
     if (out + length > count)
-      throw new Error("RLE-Paket überschreitet die Icon-Bildgröße.");
+      throw appError("RLE-Paket überschreitet die Icon-Bildgröße.");
     if (control < 128)
       for (let i = 0; i < length; i++) result[out++] = read(depth);
     else {
@@ -52,7 +55,7 @@ export function unpackIconRLE(bytes, depth, count) {
 
 async function inflateARGB(bytes, expectedSize) {
   if (typeof DecompressionStream === "undefined")
-    throw new Error("Dieser Browser unterstützt die OS4-Dekompression nicht.");
+    throw appError("Dieser Browser unterstützt die OS4-Dekompression nicht.");
   const reader = new Blob([bytes])
     .stream()
     .pipeThrough(new DecompressionStream("deflate"))
@@ -64,18 +67,18 @@ async function inflateARGB(bytes, expectedSize) {
       const { value, done } = await reader.read();
       if (done) break;
       if (offset + value.length > expectedSize)
-        throw new Error("ARGB-Daten überschreiten die Icon-Bildgröße.");
+        throw appError("ARGB-Daten überschreiten die Icon-Bildgröße.");
       output.set(value, offset);
       offset += value.length;
     }
     if (offset !== expectedSize)
-      throw new Error("Unvollständige ARGB-Bilddaten.");
+      throw appError("Unvollständige ARGB-Bilddaten.");
     return output;
   } catch (error) {
     await reader.cancel().catch(() => {});
-    throw new Error(
-      `OS4-ARGB konnte nicht dekomprimiert werden: ${error.message}`,
-    );
+    throw appError("OS4-ARGB konnte nicht dekomprimiert werden: {detail}", {
+      detail: error,
+    });
   } finally {
     reader.releaseLock();
   }
@@ -84,10 +87,10 @@ async function inflateARGB(bytes, expectedSize) {
 export async function decodeColorIcon(bytes) {
   const stream = streamFor(bytes);
   if (stream.readString(4) !== "FORM")
-    throw new Error("Unbekannte Icon-Zusatzdaten.");
+    throw appError("Unbekannte Icon-Zusatzdaten.");
   const size = stream.readDWord();
   if (size < 4 || size + 8 !== stream.length || stream.readString(4) !== "ICON")
-    throw new Error("Ungültiger FORM-ICON-Container.");
+    throw appError("Ungültiger FORM-ICON-Container.");
   let width, height, previousPalette;
   const indexed = [],
     argb = [];
@@ -97,23 +100,23 @@ export async function decodeColorIcon(bytes) {
     const chunk = streamFor(stream.readBytes(length));
     if (length & 1) stream.jump(1);
     if (kind === "FACE") {
-      if (width || length < 6) throw new Error("Ungültiger FACE-Chunk.");
+      if (width || length < 6) throw appError("Ungültiger FACE-Chunk.");
       width = chunk.readUbyte() + 1;
       height = chunk.readUbyte() + 1;
     } else if (kind === "IMAG" || kind === "ARGB") {
-      if (!width) throw new Error("FACE-Chunk fehlt vor den Bilddaten.");
+      if (!width) throw appError("FACE-Chunk fehlt vor den Bilddaten.");
       if (kind === "ARGB") {
-        if (argb.length >= 2) throw new Error("Mehr als zwei ARGB-Zustände.");
+        if (argb.length >= 2) throw appError("Mehr als zwei ARGB-Zustände.");
         if (chunk.readDWord() !== 1)
-          throw new Error("Unbekannte ARGB-Kompression.");
+          throw appError("Unbekannte ARGB-Kompression.");
         const compressedSize = chunk.readDWord();
         chunk.readWord();
-        if (!compressedSize) throw new Error("Leere ARGB-Daten.");
+        if (!compressedSize) throw appError("Leere ARGB-Daten.");
         // Some OS4 writers store size-1, while others store the actual size.
         // Accept exactly these two variants inside the declared chunk boundary.
         const remaining = chunk.length - chunk.index;
         if (remaining !== compressedSize && remaining !== compressedSize + 1)
-          throw new Error("Ungültige ARGB-Datenlänge.");
+          throw appError("Ungültige ARGB-Datenlänge.");
         const source = await inflateARGB(
           chunk.readBytes(remaining),
           width * height * 4,
@@ -124,7 +127,7 @@ export async function decodeColorIcon(bytes) {
         argb.push({ width, height, rgba });
       } else {
         if (indexed.length >= 2)
-          throw new Error("Mehr als zwei ColorIcon-Zustände.");
+          throw appError("Mehr als zwei ColorIcon-Zustände.");
         const transparent = chunk.readUbyte(),
           colors = chunk.readUbyte() + 1;
         const flags = chunk.readUbyte(),
@@ -139,7 +142,7 @@ export async function decodeColorIcon(bytes) {
           imageCompression > 1 ||
           paletteCompression > 1
         )
-          throw new Error("Unbekannte ColorIcon-Kompression oder Farbtiefe.");
+          throw appError("Unbekannte ColorIcon-Kompression oder Farbtiefe.");
         const imageData = chunk.readBytes(imageSize);
         const pixels = imageCompression
           ? unpackIconRLE(imageData, depth, width * height)
@@ -151,12 +154,12 @@ export async function decodeColorIcon(bytes) {
             ? unpackIconRLE(paletteData, 8, colors * 3)
             : paletteData;
           if (rgb.length !== colors * 3)
-            throw new Error("Ungültige ColorIcon-Palettenlänge.");
+            throw appError("Ungültige ColorIcon-Palettenlänge.");
           palette = Array.from({ length: colors }, (_, i) =>
             Array.from(rgb.slice(i * 3, i * 3 + 3)),
           );
         }
-        if (!palette) throw new Error("ColorIcon-Palette fehlt.");
+        if (!palette) throw appError("ColorIcon-Palette fehlt.");
         previousPalette = palette;
         indexed.push(
           indexedRGBA(
@@ -173,7 +176,7 @@ export async function decodeColorIcon(bytes) {
   }
   const states = argb.length ? argb : indexed;
   if (!states.length)
-    throw new Error("ColorIcon enthält kein unterstütztes Bild.");
+    throw appError("ColorIcon enthält kein unterstütztes Bild.");
   return { format: argb.length ? "OS4 ARGB" : "ColorIcon / GlowIcon", states };
 }
 
@@ -188,7 +191,7 @@ function decodeNewLines(lines, first, depth, count) {
     for (const character of lines[line]) {
       const code = character.charCodeAt(0);
       if (code < 32 || (code >= 128 && code < 160))
-        throw new Error("Ungültiges NewIcon-Zeichen.");
+        throw appError("Ungültiges NewIcon-Zeichen.");
       const symbol = code < 160 ? code - 32 : code < 209 ? code - 81 : 0;
       const repeat = code >= 209 ? code - 208 : 1;
       for (let r = 0; r < repeat; r++) {
@@ -203,7 +206,7 @@ function decodeNewLines(lines, first, depth, count) {
       }
     }
   }
-  throw new Error("Unvollständige NewIcon-Palette oder Bilddaten.");
+  throw appError("Unvollständige NewIcon-Palette oder Bilddaten.");
 }
 export function decodeNewIcons(toolTypes) {
   const states = [];
@@ -212,18 +215,18 @@ export function decodeNewIcons(toolTypes) {
       .filter((v) => v.startsWith(`IM${state}=`))
       .map((v) => v.slice(4));
     if (!lines.length) {
-      if (state === 1) throw new Error("NewIcon Normal Image fehlt.");
+      if (state === 1) throw appError("NewIcon Normal Image fehlt.");
       break;
     }
     const header = lines[0];
     if (header.length < 5 || !["B", "C"].includes(header[0]))
-      throw new Error("Ungültiger NewIcon-Kopf.");
+      throw appError("Ungültiger NewIcon-Kopf.");
     const width = header.charCodeAt(1) - 33,
       height = header.charCodeAt(2) - 33;
     const colors = (header.charCodeAt(3) - 33) * 64 + header.charCodeAt(4) - 33;
     validateDimensions(width, height, 1);
     if (colors < 1 || colors > 256)
-      throw new Error("Ungültige NewIcon-Farbanzahl.");
+      throw appError("Ungültige NewIcon-Farbanzahl.");
     lines[0] = header.slice(5);
     const decoded = decodeNewLines(lines, 0, 8, colors * 3);
     const palette = Array.from({ length: colors }, (_, i) =>

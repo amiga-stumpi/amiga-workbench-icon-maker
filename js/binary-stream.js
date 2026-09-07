@@ -1,9 +1,10 @@
+import { appError } from "./i18n.js";
 // API adapted from Steffest's file.js, Copyright (c) 2019 Steffest.
 // MIT license: see ../THIRD_PARTY_LICENSES.md.
 export class BinaryStream {
   constructor(buffer) {
     if (!(buffer instanceof ArrayBuffer))
-      throw new TypeError("ArrayBuffer erwartet.");
+      throw appError("ArrayBuffer erwartet.", {}, TypeError);
     this.buffer = buffer;
     this.view = new DataView(buffer);
     this.bytes = new Uint8Array(buffer);
@@ -18,13 +19,15 @@ export class BinaryStream {
       count < 0 ||
       this.index + count > this.length
     )
-      throw new RangeError(
-        `Ungültige .info-Datei: Dateigrenze bei Byte ${this.index}.`,
+      throw appError(
+        "Ungültige .info-Datei: Dateigrenze bei Byte {offset}.",
+        { offset: this.index },
+        RangeError,
       );
   }
   goto(position) {
     if (!Number.isInteger(position) || position < 0 || position > this.length)
-      throw new RangeError("Ungültige Dateiposition.");
+      throw appError("Ungültige Dateiposition.", {}, RangeError);
     this.index = position;
     return this;
   }
@@ -39,7 +42,11 @@ export class BinaryStream {
   }
   writeNumber(value, size, method, min, max) {
     if (!Number.isInteger(value) || value < min || value > max)
-      throw new RangeError(`Ungültiger Integer: ${value}.`);
+      throw appError(
+        "Ungültiger Integer: {value}.",
+        { value: value },
+        RangeError,
+      );
     this.check(size);
     this.view[method](this.index, value, false);
     this.index += size;
@@ -105,7 +112,7 @@ export class BinaryStream {
       position < 0 ||
       position * 8 + bitPosition + count > this.length * 8
     )
-      throw new RangeError("Ungültiger Bitbereich.");
+      throw appError("Ungültiger Bitbereich.", {}, RangeError);
     let value = 0;
     for (let i = 0; i < count; i++) {
       const bit = position * 8 + bitPosition + i;
@@ -117,7 +124,7 @@ export class BinaryStream {
   // Writes a bit array at the byte cursor, pads its final byte with zeroes.
   writeBits(bits) {
     if (Array.from(bits).some((b) => b !== 0 && b !== 1))
-      throw new RangeError("Nur Bits 0/1 erlaubt.");
+      throw appError("Nur Bits 0/1 erlaubt.", {}, RangeError);
     this.check(Math.ceil(bits.length / 8));
     for (let i = 0; i < bits.length; i += 8) {
       let value = 0;

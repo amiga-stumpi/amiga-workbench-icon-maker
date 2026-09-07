@@ -1,3 +1,4 @@
+import { appError } from "./i18n.js";
 import { quantizeRGBA } from "./palette.js";
 export async function importPNG(
   file,
@@ -8,7 +9,7 @@ export async function importPNG(
   threshold = 128,
 ) {
   if (file.size > 32 * 1024 * 1024)
-    throw new Error("PNG ist zu groß (maximal 32 MiB).");
+    throw appError("PNG ist zu groß (maximal 32 MiB).");
   const header = new DataView(await file.slice(0, 24).arrayBuffer());
   if (
     header.byteLength < 24 ||
@@ -16,15 +17,15 @@ export async function importPNG(
     header.getUint32(4) !== 0x0d0a1a0a ||
     header.getUint32(12) !== 0x49484452
   )
-    throw new Error("PNG konnte nicht geladen werden: ungültige PNG-Datei.");
+    throw appError("PNG konnte nicht geladen werden: ungültige PNG-Datei.");
   if (header.getUint32(16) * header.getUint32(20) > 16777216)
-    throw new Error("PNG überschreitet 16 Megapixel.");
+    throw appError("PNG überschreitet 16 Megapixel.");
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
     await new Promise((resolve, reject) => {
       img.onload = resolve;
-      img.onerror = () => reject(new Error("PNG konnte nicht geladen werden."));
+      img.onerror = () => reject(appError("PNG konnte nicht geladen werden."));
       img.src = url;
     });
     const canvas = document.createElement("canvas");
@@ -87,11 +88,11 @@ export function iconFilename(name) {
     base === "." ||
     base === ".."
   )
-    throw new Error(
+    throw appError(
       "Bitte einen gültigen Dateinamen ohne Pfadzeichen eingeben.",
     );
   // Amiga OFS/FFS component names are limited to 30 bytes, including .info.
   if (base.length > 25 || /[^\x20-\xff]/.test(base))
-    throw new Error("Name: maximal 25 Latin-1-Zeichen (plus .info).");
+    throw appError("Name: maximal 25 Latin-1-Zeichen (plus .info).");
   return base + ".info";
 }

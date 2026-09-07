@@ -1,3 +1,4 @@
+import { appError } from "./i18n.js";
 export function validateDimensions(width, height, depth) {
   if (
     !Number.isInteger(width) ||
@@ -7,11 +8,17 @@ export function validateDimensions(width, height, depth) {
     width > 256 ||
     height > 256
   )
-    throw new RangeError(
+    throw appError(
       "Breite und Höhe müssen ganze Zahlen zwischen 1 und 256 sein.",
+      {},
+      RangeError,
     );
   if (!Number.isInteger(depth) || depth < 1 || depth > 3)
-    throw new RangeError("Depth muss zwischen 1 und 3 Bitplanes liegen.");
+    throw appError(
+      "Depth muss zwischen 1 und 3 Bitplanes liegen.",
+      {},
+      RangeError,
+    );
 }
 export function byteSize(width, height, depth) {
   validateDimensions(width, height, depth);
@@ -20,11 +27,13 @@ export function byteSize(width, height, depth) {
 export function validatePixels(pixels, width, height, depth) {
   validateDimensions(width, height, depth);
   if (!pixels || pixels.length !== width * height)
-    throw new Error("Pixelanzahl passt nicht zur Bildgröße.");
+    throw appError("Pixelanzahl passt nicht zur Bildgröße.");
   for (const pen of pixels) {
     if (!Number.isInteger(pen) || pen < 0 || pen >= 2 ** depth)
-      throw new RangeError(
-        `Pen ${pen} kann bei ${depth} Bitplanes nicht gespeichert werden.`,
+      throw appError(
+        "Pen {pen} kann bei {depth} Bitplanes nicht gespeichert werden.",
+        { pen: pen, depth: depth },
+        RangeError,
       );
   }
 }
@@ -53,7 +62,7 @@ export function decode(
   planeOnOff = 0,
 ) {
   if (bytes.length !== byteSize(width, height, depth))
-    throw new Error("Ungültige Bitplane-Datenlänge.");
+    throw appError("Ungültige Bitplane-Datenlänge.");
   // Image planes are assigned in order to set bits of PlanePick.
   if (
     !Number.isInteger(planePick) ||
@@ -63,10 +72,10 @@ export function decode(
     planeOnOff < 0 ||
     planeOnOff > 7
   )
-    throw new Error("PlanePick/PlaneOnOff außerhalb der unterstützten 8 Pens.");
+    throw appError("PlanePick/PlaneOnOff außerhalb der unterstützten 8 Pens.");
   const picks = [0, 1, 2].filter((p) => planePick & (1 << p));
   if (picks.length !== depth)
-    throw new Error("PlanePick passt nicht zur gespeicherten Depth.");
+    throw appError("PlanePick passt nicht zur gespeicherten Depth.");
   const pixels = new Uint8Array(width * height).fill(
     planeOnOff & ~planePick & 7,
   );

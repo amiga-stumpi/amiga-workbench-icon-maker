@@ -1,3 +1,4 @@
+import { appError } from "./i18n.js";
 // Classic field sequence adapted from Amiga-Icon-Editor/_script/lib/icon.js.
 // Copyright (c) 2019-2021 Steffest - dev@stef.be. MIT: ../THIRD_PARTY_LICENSES.md.
 import { BinaryStream } from "./binary-stream.js";
@@ -79,17 +80,17 @@ function textBytes(value) {
     value.length > 4095 ||
     /[\u0000\u0100-\uffff]/.test(value)
   )
-    throw new Error(
+    throw appError(
       "Amiga-Texte müssen Latin-1 ohne Nullzeichen sein (max. 4095 Zeichen).",
     );
   return value.length + 5;
 }
 function readText(stream) {
   const size = stream.readDWord();
-  if (size < 1 || size > 4096) throw new Error("Ungültige Amiga-Textlänge.");
+  if (size < 1 || size > 4096) throw appError("Ungültige Amiga-Textlänge.");
   const data = stream.readBytes(size);
   if (data[size - 1] !== 0 || data.subarray(0, -1).includes(0))
-    throw new Error("Ungültiger Amiga-Textabschluss.");
+    throw appError("Ungültiger Amiga-Textabschluss.");
   return Array.from(data.subarray(0, -1), (b) => String.fromCharCode(b)).join(
     "",
   );
@@ -102,8 +103,8 @@ function writeText(stream, value) {
 function readImage(stream) {
   const result = readFields(stream, imageFields);
   if (result.nextImage)
-    throw new Error("Verkettete Image-Strukturen werden nicht unterstützt.");
-  if (!result.imageData) throw new Error("ImageData fehlt.");
+    throw appError("Verkettete Image-Strukturen werden nicht unterstützt.");
+  if (!result.imageData) throw appError("ImageData fehlt.");
   result.pixels = decode(
     stream.readBytes(byteSize(result.width, result.height, result.depth)),
     result.width,
@@ -175,19 +176,19 @@ export const AmigaIcon = {
   validate(icon) {
     validateDimensions(icon.width, icon.height, icon.depth);
     if (!Number.isInteger(icon.type) || !this.TYPES[icon.type])
-      throw new Error("Ungültiger Icon Type.");
+      throw appError("Ungültiger Icon Type.");
     if (
       !Number.isInteger(icon.stackSize) ||
       icon.stackSize < 1 ||
       icon.stackSize > 0x7fffffff
     )
-      throw new Error(
+      throw appError(
         "StackSize muss ein positiver Integer bis 2147483647 sein.",
       );
     if (icon.version !== 1)
-      throw new Error("Nur DiskObject-Version 1 wird unterstützt.");
+      throw appError("Nur DiskObject-Version 1 wird unterstützt.");
     if ([1, 2, 5].includes(icon.type) && !icon.drawerData)
-      throw new Error(
+      throw appError(
         "Dieser Typ benötigt DrawerData. Bitte ein klassisches Drawer-Icon als Vorlage öffnen.",
       );
     if (
@@ -195,36 +196,36 @@ export const AmigaIcon = {
       (!(icon.drawerData instanceof Uint8Array) ||
         icon.drawerData.length !== 56)
     )
-      throw new Error("Klassische DrawerData müssen genau 56 Bytes enthalten.");
-    if (!icon.normal) throw new Error("Normal Image fehlt.");
+      throw appError("Klassische DrawerData müssen genau 56 Bytes enthalten.");
+    if (!icon.normal) throw appError("Normal Image fehlt.");
     if (icon.selectedEnabled !== false && !icon.selected)
-      throw new Error("Selected Image fehlt.");
+      throw appError("Selected Image fehlt.");
     for (const img of [
       icon.normal,
       icon.selectedEnabled === false ? null : icon.selected,
     ].filter(Boolean)) {
       validatePixels(img.pixels, img.width, img.height, img.depth);
       if (img.depth > icon.depth)
-        throw new Error("Image-Depth übersteigt die Icon-Depth.");
+        throw appError("Image-Depth übersteigt die Icon-Depth.");
       if (
         img.nextImage ||
         img.planePick !== (1 << img.depth) - 1 ||
         img.planeOnOff !== 0
       )
-        throw new Error("Nicht normalisierte Image-Struktur.");
+        throw appError("Nicht normalisierte Image-Struktur.");
       if (
         img.width + img.leftEdge > icon.width ||
         img.height + img.topEdge > icon.height ||
         img.leftEdge < 0 ||
         img.topEdge < 0
       )
-        throw new Error("Image liegt außerhalb der Gadget-Fläche.");
+        throw appError("Image liegt außerhalb der Gadget-Fläche.");
     }
     for (const coord of [icon.currentX, icon.currentY])
       if (!Number.isInteger(coord) || coord < -0x80000000 || coord > 0xffffffff)
-        throw new Error("Ungültige Workbench-Position.");
+        throw appError("Ungültige Workbench-Position.");
     if (!Array.isArray(icon.toolTypes) || icon.toolTypes.length > 1024)
-      throw new Error("Zu viele ToolTypes.");
+      throw appError("Zu viele ToolTypes.");
     for (const value of [
       icon.defaultTool,
       icon.toolWindow,
@@ -232,7 +233,7 @@ export const AmigaIcon = {
     ].filter((v) => v !== null))
       textBytes(value);
     if (icon.toolTypes.some((v) => /^IM[12]=/.test(v)))
-      throw new Error(NEW_FORMAT);
+      throw appError(NEW_FORMAT);
   },
   write(icon) {
     this.validate(icon);
@@ -285,21 +286,21 @@ export const AmigaIcon = {
     }
     if (icon.toolWindow !== null) writeText(stream, icon.toolWindow);
     if (stream.index !== size)
-      throw new Error("Interner Fehler: Dateigröße stimmt nicht.");
+      throw appError("Interner Fehler: Dateigröße stimmt nicht.");
     return stream.buffer;
   },
   parse(buffer) {
     const stream = new BinaryStream(buffer);
     if (stream.length >= 4 && stream.view.getUint32(0) === 0x89504e47)
-      throw new Error(NEW_FORMAT);
+      throw appError(NEW_FORMAT);
     if (stream.readWord() !== 0xe310)
-      throw new Error("Ungültige .info-Datei: Magic E310 fehlt.");
+      throw appError("Ungültige .info-Datei: Magic E310 fehlt.");
     const icon = readFields(stream, fields);
-    if (icon.version !== 1) throw new Error("Unbekannte DiskObject-Version.");
-    if (icon.userData !== 0) throw new Error(NEW_FORMAT);
+    if (icon.version !== 1) throw appError("Unbekannte DiskObject-Version.");
+    if (icon.userData !== 0) throw appError(NEW_FORMAT);
     if (!(icon.flags & 4))
-      throw new Error("Border-Gadgets werden nicht unterstützt.");
-    if (!icon.gadgetRender) throw new Error("Normal Image fehlt.");
+      throw appError("Border-Gadgets werden nicht unterstützt.");
+    if (!icon.gadgetRender) throw appError("Normal Image fehlt.");
     icon.drawerData = icon.hasDrawerData ? stream.readBytes(56) : null;
     icon.normal = readImage(stream);
     icon.selected = icon.selectRender ? readImage(stream) : null;
@@ -310,20 +311,20 @@ export const AmigaIcon = {
     if (icon.hasToolTypes) {
       const size = stream.readDWord();
       if (size < 4 || size % 4 || size > 4100)
-        throw new Error("Ungültige ToolTypes-Länge.");
+        throw appError("Ungültige ToolTypes-Länge.");
       for (let i = 0; i < size / 4 - 1; i++)
         icon.toolTypes.push(readText(stream));
     }
     icon.toolWindow = icon.hasToolWindow ? readText(stream) : null;
     if (icon.toolTypes.some((value) => /^IM[12]=/.test(value)))
-      throw new Error(NEW_FORMAT);
+      throw appError(NEW_FORMAT);
     if (stream.index !== stream.length) {
       const rest = stream.readString(
         Math.min(12, stream.length - stream.index),
       );
       if (rest.startsWith("FORM") || rest.startsWith("ARGB"))
-        throw new Error(NEW_FORMAT);
-      throw new Error("Nicht unterstützte Zusatzdaten am Dateiende.");
+        throw appError(NEW_FORMAT);
+      throw appError("Nicht unterstützte Zusatzdaten am Dateiende.");
     }
     // Zero stack is valid in legacy files (Workbench chooses its default).
     const stack = icon.stackSize;
@@ -339,19 +340,19 @@ export const AmigaIcon = {
 export function readIconContainer(buffer) {
   const stream = new BinaryStream(buffer);
   if (stream.readWord() !== 0xe310)
-    throw new Error("Ungültige .info-Datei: Magic E310 fehlt.");
+    throw appError("Ungültige .info-Datei: Magic E310 fehlt.");
   const icon = readFields(stream, fields);
-  if (icon.version !== 1) throw new Error("Unbekannte DiskObject-Version.");
+  if (icon.version !== 1) throw appError("Unbekannte DiskObject-Version.");
   if (!(icon.flags & 4))
-    throw new Error("Border-Gadgets werden nicht unterstützt.");
+    throw appError("Border-Gadgets werden nicht unterstützt.");
   const readPlanar = () => {
     const img = readFields(stream, imageFields);
     validateDimensions(img.width, img.height, 1);
     if (img.depth > 8 || img.nextImage)
-      throw new Error("Nicht unterstützte klassische Image-Struktur.");
+      throw appError("Nicht unterstützte klassische Image-Struktur.");
     const size = Math.ceil(img.width / 16) * 2 * img.height * img.depth;
     img.data = stream.readBytes(img.imageData ? size : 0);
-    if (img.depth && !img.imageData) throw new Error("ImageData fehlt.");
+    if (img.depth && !img.imageData) throw appError("ImageData fehlt.");
     return img;
   };
   icon.drawerData = icon.hasDrawerData ? stream.readBytes(56) : null;
@@ -362,7 +363,7 @@ export function readIconContainer(buffer) {
   if (icon.hasToolTypes) {
     const size = stream.readDWord();
     if (size < 4 || size % 4 || size > 4100)
-      throw new Error("Ungültige ToolTypes-Länge.");
+      throw appError("Ungültige ToolTypes-Länge.");
     for (let i = 0; i < size / 4 - 1; i++)
       icon.toolTypes.push(readText(stream));
   }

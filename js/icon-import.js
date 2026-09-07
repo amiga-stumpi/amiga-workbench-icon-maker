@@ -1,3 +1,4 @@
+import { appError, t } from "./i18n.js";
 import { AmigaIcon, readIconContainer } from "./amiga-icon.js";
 import {
   decodeColorIcon,
@@ -22,12 +23,12 @@ const OS2_PALETTE = [
 function planarRGBA(img) {
   if (!img) return null;
   if (img.depth > 3 || img.planePick > 7 || img.planeOnOff > 7)
-    throw new Error(
+    throw appError(
       "Planare Icons ohne eingebettete Palette unterstützen maximal 8 Pens.",
     );
   const planes = [0, 1, 2].filter((p) => img.planePick & (1 << p));
   if (planes.length !== img.depth)
-    throw new Error("PlanePick passt nicht zur Image-Depth.");
+    throw appError("PlanePick passt nicht zur Image-Depth.");
   const pixels = new Uint8Array(img.width * img.height).fill(
     img.planeOnOff & ~img.planePick & 7,
   );
@@ -59,7 +60,7 @@ function fitState(state, width, height, palette, alpha) {
       const dx = x + (state.leftEdge || 0),
         dy = y + (state.topEdge || 0);
       if (dx < 0 || dy < 0 || dx >= width || dy >= height)
-        throw new Error("Icon-Bild liegt außerhalb der bearbeitbaren Fläche.");
+        throw appError("Icon-Bild liegt außerhalb der bearbeitbaren Fläche.");
       output[dy * width + dx] = pixels[y * state.width + x];
     }
   return output;
@@ -69,16 +70,16 @@ export async function importIcon(
   { depth = 2, palette = defaultPalette(), alpha = 128 } = {},
 ) {
   if (!(buffer instanceof ArrayBuffer) || buffer.byteLength > 32 * 1024 * 1024)
-    throw new Error("Icon ist zu groß (maximal 32 MiB).");
+    throw appError("Icon ist zu groß (maximal 32 MiB).");
   if (
     !Number.isInteger(depth) ||
     depth < 1 ||
     depth > 3 ||
     palette.length < 2 ** depth
   )
-    throw new Error("Ungültige Zielpalette oder Farbtiefe.");
+    throw appError("Ungültige Zielpalette oder Farbtiefe.");
   if (!Number.isInteger(alpha) || alpha < 0 || alpha > 255)
-    throw new Error("Alpha-Schwellenwert muss zwischen 0 und 255 liegen.");
+    throw appError("Alpha-Schwellenwert muss zwischen 0 und 255 liegen.");
   const notices = [];
   let decoded,
     source = {};
@@ -89,7 +90,7 @@ export async function importIcon(
     decoded = { format: png.format, states };
     notices.push(...png.notices);
     if (png.images.some((img) => img.width > 256 || img.height > 256))
-      notices.push("PNG auf maximal 256 × 256 Pixel eingepasst.");
+      notices.push(t("PNG auf maximal 256 × 256 Pixel eingepasst."));
   } else {
     source = readIconContainer(buffer);
     const hasNewIcon = source.toolTypes.some((v) => /^IM[12]=/.test(v));
@@ -99,7 +100,7 @@ export async function importIcon(
     else if (source.userData === 0) return AmigaIcon.parse(buffer);
     else {
       if ((source.userData & 255) > 1)
-        throw new Error("Unbekannte planare Icon-Revision.");
+        throw appError("Unbekannte planare Icon-Revision.");
       decoded = {
         format: "OS2+/OS3 / MagicWB",
         states: [planarRGBA(source.normal), planarRGBA(source.selected)].filter(
@@ -107,15 +108,17 @@ export async function importIcon(
         ),
       };
       notices.push(
-        "Planare Quellfarben anhand der OS2+/MagicWB-Vorschaupalette interpretiert.",
+        t(
+          "Planare Quellfarben anhand der OS2+/MagicWB-Vorschaupalette interpretiert.",
+        ),
       );
     }
     if (source.drawerData2)
       notices.push(
-        "OS2+-Drawer-Ansichtsoptionen entfallen beim klassischen Export.",
+        t("OS2+-Drawer-Ansichtsoptionen entfallen beim klassischen Export."),
       );
   }
-  if (!decoded.states.length) throw new Error("Normal Image fehlt.");
+  if (!decoded.states.length) throw appError("Normal Image fehlt.");
   const width = Math.max(
     ...decoded.states.map((img) => img.width + (img.leftEdge || 0)),
   );
@@ -153,9 +156,11 @@ export async function importIcon(
     drawerData: source.drawerData ?? null,
   });
   if (source.type && !AmigaIcon.TYPES[source.type])
-    notices.push("Nicht unterstützter Icon Type wurde auf WBTOOL gesetzt.");
+    notices.push(t("Nicht unterstützter Icon Type wurde auf WBTOOL gesetzt."));
   icon.sourceFormat = decoded.format;
-  icon.importNotice =
-    `${decoded.format} → ${2 ** depth} Pens der gewählten Palette. Farben/Transparenz wurden reduziert. Export als klassisches WB1.x-.info, nicht im Quellformat. ${notices.join(" ")}`.trim();
+  icon.importNotice = t(
+    "{format} → {pens} Pens der gewählten Palette. Farben/Transparenz wurden reduziert. Export als klassisches WB1.x-.info, nicht im Quellformat. {notices}",
+    { format: decoded.format, pens: 2 ** depth, notices: notices.join(" ") },
+  ).trim();
   return icon;
 }
