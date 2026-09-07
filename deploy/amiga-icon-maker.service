@@ -1,0 +1,17 @@
+[Unit]
+Description=Amiga Icon Maker static nginx server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/amigaiconmaker
+ExecStartPre=/opt/amigaiconmaker/.runtime/nginx/usr/sbin/nginx -t -p /opt/amigaiconmaker/.runtime/ -c /opt/amigaiconmaker/deploy/nginx.conf
+ExecStart=/opt/amigaiconmaker/.runtime/nginx/usr/sbin/nginx -p /opt/amigaiconmaker/.runtime/ -c /opt/amigaiconmaker/deploy/nginx.conf -g "daemon off;"
+ExecReload=/opt/amigaiconmaker/.runtime/nginx/usr/sbin/nginx -t -p /opt/amigaiconmaker/.runtime/ -c /opt/amigaiconmaker/deploy/nginx.conf
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
